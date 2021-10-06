@@ -6,8 +6,7 @@ Adlib support for Zotonic
 This [Zotonic](http://www.zotonic.com) module adds support routines for accessing and importing these collections into a Zotonic system.
 
 
-API functions
--------------
+## API functions
 
 The remote Adlib endpoint is configured using a record:
 
@@ -27,8 +26,7 @@ The API URL is the base URL for all API calls.
 The database is one of the databases available on the remote system.
 
 
-Listing all databases in Adlib
-------------------------------
+### Listing all databases in Adlib
 
 A list of databases can be requested:
 
@@ -55,8 +53,7 @@ This returns a list of databases:
 ```
 
 
-Fetching a single record
-------------------------
+### Fetching a single record
 
 Records are fetched using their `priref` id.
 
@@ -85,8 +82,7 @@ Returns:
 If the record is not found then `{error, enoent}` is returned.
 
 
-Fetching all records since a date
----------------------------------
+### Fetching all records since a date
 
 For syncing the Adlib content with Zotonic there is a function to fetch all records
 modified since a certain date (in UTC).
@@ -117,3 +113,52 @@ Where `List` is a list of Adlib records and `Next` is the continuation function.
 - `{next, Fun}`
 
 The `Fun` can be called as `Fun()` and will return the next result.
+
+The records are sorted by _priref_.
+
+
+### Fetching all records
+
+To fetch all records, pass an empty date to the `fetch_since`:
+
+```erlang
+adlib_api:fetch_since(<<"-1 month">>, E, z:c(yoursite)).
+```
+
+The records are sorted by _priref_.
+
+
+## Mapping Adlib records to RDF triples.
+
+There are basic routines to map an Adlib record to RDF statements.
+
+
+### Generate an unique URN for an Adlib record
+
+To identify a resource, an unique URN is needed. This routine generates the unique URN using
+the Adlib endpoint specification and the _priref_ in the Adlib record.
+
+```erlang
+adlib_triple:uri(Endpoint, Record).
+```
+
+Returns something like:
+
+```erlang
+{ok, <<"urn:adlib:foobar.adlibhosting.com/mydatabase/collect/10594">>}
+
+```
+
+### Check if an URN matches an endpoint
+
+To find the endpoint for an Adlib URN you can check the URN against an Endpoint:
+
+```erlang
+adlib_triple:is_matching_endpoint(<<"urn:adlib:foobar.adlibhosting.com/mydatabase/collect/10594">>, Endpoint).
+```
+
+This returns a boolean (in this case `true`).
+
+
+
+

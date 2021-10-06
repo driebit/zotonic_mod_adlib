@@ -49,7 +49,8 @@
               | calendar:date()
               | binary()
               | string()
-              | integer().
+              | integer()
+              | undefined.
 
 -export_type([ api_error/0, date/0 ]).
 
@@ -105,7 +106,15 @@ fetch_record(Priref, Endpoint, Context) ->
          Endpoint :: mod_adlib:adlib_endpoint(),
          RecsCont :: { list(map()), fun(() -> {ok, RecsCont} | {error, api_error()}) }.
 fetch_since(Since, Endpoint, Context) ->
-    DT = z_datetime:to_datetime(Since),
+    DT = case Since of
+        None when None =:= undefined;
+                  None =:= <<>>;
+                  None =:= "";
+                  None =:= 0 ->
+            undefined;
+        _ ->
+            z_datetime:to_datetime(Since)
+    end,
     case fetch_since_pager(DT, Endpoint, 1, "'Y-m-d H:i:s'", Context) of
         {error, #{ <<"info">> := _}} ->
             %% Detect datetime format used by Adlib server for modified.
@@ -119,7 +128,7 @@ fetch_since(Since, Endpoint, Context) ->
 
 %% @doc Continuation function returned from fetch_since/3.
 -spec fetch_since_pager(Since, Endpoint, Offset, DateFormat, z:context()) -> {ok, RecsCont} | {error, api_error()}
-    when Since :: calendar:datetime(),
+    when Since :: calendar:datetime() | undefined,
          Endpoint :: mod_adlib:adlib_endpoint(),
          Offset :: pos_integer(),
          DateFormat :: string(),
@@ -130,15 +139,24 @@ fetch_since_pager(Since, Endpoint, Offset, DateFormat, Context) ->
         database = Database,
         extra_arguments = ExtraArgs
     } = Endpoint,
-    Tz = z_convert:to_list(Endpoint#adlib_endpoint.timezone),
-    SinceFormatted = z_dateformat:format(Since, DateFormat, [{tz, Tz}]),
     Search = build_search_args(ExtraArgs),
-    Search1 = <<"(modification>=", SinceFormatted/binary, Search/binary, ")">>,
+    Search1 = case Since of
+        undefined ->
+            Search;
+        _ ->
+            Tz = z_convert:to_list(Endpoint#adlib_endpoint.timezone),
+            SinceFormatted = z_dateformat:format(Since, DateFormat, [{tz, Tz}]),
+             [ <<"modification>=", SinceFormatted/binary>> | Search ]
+    end,
+    Search2 = case iolist_to_binary(lists:join(" and ", Search1)) of
+        <<>> -> <<"all">>;
+        S -> <<"(", S/binary, ")">>
+    end,
     Params = [
         {output, json},
         {xmltype, grouped},
         {database, Database},
-        {search, Search1},
+        {search, Search2},
         {startfrom, Offset},
         {limit, ?ADLIB_PAGELEN}
     ],
@@ -184,9 +202,11 @@ fetch_since_pager(Since, Endpoint, Offset, DateFormat, Context) ->
 
 
 build_search_args([]) ->
-    <<>>;
+    [];
 build_search_args([{K,V}|Rest]) ->
-    <<" and ", K/binary, "=", V/binary, (build_search_args(Rest))/binary>>.
+    K1 = z_convert:to_binary(K),
+    V1 = z_convert:to_binary(V),
+    [ <<K1/binary, "=", V1/binary>> | build_search_args(Rest) ].
 
 
 
