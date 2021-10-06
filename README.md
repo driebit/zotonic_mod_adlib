@@ -139,7 +139,7 @@ To identify a resource, an unique URN is needed. This routine generates the uniq
 the Adlib endpoint specification and the _priref_ in the Adlib record.
 
 ```erlang
-adlib_triple:uri(Endpoint, Record).
+adlib_rdf:uri(Endpoint, Record).
 ```
 
 Returns something like:
@@ -154,7 +154,7 @@ Returns something like:
 To find the endpoint for an Adlib URN you can check the URN against an Endpoint:
 
 ```erlang
-adlib_triple:is_matching_endpoint(<<"urn:adlib:foobar.adlibhosting.com/mydatabase/collect/10594">>, Endpoint).
+adlib_rdf:is_matching_endpoint(<<"urn:adlib:foobar.adlibhosting.com/mydatabase/collect/10594">>, Endpoint).
 ```
 
 This returns a boolean (in this case `true`).

@@ -16,7 +16,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
--module(adlib_triple).
+-module(adlib_rdf).
 
 -export([
     uri/2,
