@@ -20,7 +20,7 @@
 
 -export([
     uri/2,
-    is_matching_endpoint/2,
+    is_matching_uri/2,
     triples/3
     ]).
 
@@ -57,10 +57,10 @@ uri(_Endpoint, _Record) ->
 
 
 %% @doc Check if the URI belongs to the given Adlib endpoint.
--spec is_matching_endpoint( Uri, Endpoint ) -> boolean()
-    when Uri :: uri_string:uri_string(),
-         Endpoint :: mod_adlib:adlib_endpoint().
-is_matching_endpoint(<<"urn:adlib:", Uri/binary>>, Endpoint) ->
+-spec is_matching_uri( Endpoint, Uri ) -> boolean()
+    when Endpoint :: mod_adlib:adlib_endpoint(),
+         Uri :: uri_string:uri_string().
+is_matching_uri(Endpoint, <<"urn:adlib:", Uri/binary>>) ->
     #{
         host := Host,
         path := Path
@@ -75,7 +75,7 @@ is_matching_endpoint(<<"urn:adlib:", Uri/binary>>, Endpoint) ->
         [ Host, BaseDir, Database1, _Id ] -> true;
         _ -> false
     end;
-is_matching_endpoint(_Uri, _Endpoint) ->
+is_matching_uri(_Endpoint, _Uri) ->
     false.
 
 

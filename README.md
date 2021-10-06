@@ -154,7 +154,7 @@ Returns something like:
 To find the endpoint for an Adlib URN you can check the URN against an Endpoint:
 
 ```erlang
-adlib_rdf:is_matching_endpoint(<<"urn:adlib:foobar.adlibhosting.com/mydatabase/collect/10594">>, Endpoint).
+adlib_rdf:is_matching_uri(Endpoint, <<"urn:adlib:foobar.adlibhosting.com/mydatabase/collect/10594">>).
 ```
 
 This returns a boolean (in this case `true`).
