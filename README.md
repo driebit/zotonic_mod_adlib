@@ -93,7 +93,7 @@ modified since a certain date (in UTC).
 
 The date can be a relative date `"-1 week"`, a timestamp `1633526615`, a date
 `{2021, 10, 5}`, a datetime `{{2021, 10, 5}, {12, 0, 0}}` or a string with a date 
-`"2021-10-05 12:00:00".
+`"2021-10-05 12:00:00"`.
 
 The `timezone` of the Adlib endpoint is used to convert the date to the date/time used
 by Adlib. Adlib uses local time in their output, where the timezone depends on the
