@@ -56,8 +56,8 @@
 
 
 %% @doc Fetch a single record from an adlib API endpoint.
--spec fetch_record(Priref :: binary() | string() | integer(), mod_adlib:adlib_endpoint(), z:context() ) -> {ok, map()} | {error, api_error()}.
-fetch_record(Priref, Endpoint, Context) ->
+-spec fetch_record(mod_adlib:adlib_endpoint(), Priref :: binary() | string() | integer(), z:context() ) -> {ok, map()} | {error, api_error()}.
+fetch_record(Endpoint, Priref, Context) ->
     #adlib_endpoint{
         api_url = URL,
         database = Database
@@ -101,11 +101,11 @@ fetch_record(Priref, Endpoint, Context) ->
 
 %% @doc Fetch all records since a certain date. This returns the first set of records and
 %% a continuation function for the next set.
--spec fetch_since(Since, Endpoint, z:context()) -> {ok, RecsCont} | {error, api_error()}
-    when Since :: date(),
-         Endpoint :: mod_adlib:adlib_endpoint(),
+-spec fetch_since(Endpoint, Since, z:context()) -> {ok, RecsCont} | {error, api_error()}
+    when Endpoint :: mod_adlib:adlib_endpoint(),
+         Since :: date(),
          RecsCont :: { list(map()), fun(() -> {ok, RecsCont} | {error, api_error()}) }.
-fetch_since(Since, Endpoint, Context) ->
+fetch_since(Endpoint, Since, Context) ->
     DT = case Since of
         None when None =:= undefined;
                   None =:= <<>>;
@@ -115,25 +115,25 @@ fetch_since(Since, Endpoint, Context) ->
         _ ->
             z_datetime:to_datetime(Since)
     end,
-    case fetch_since_pager(DT, Endpoint, 1, "'Y-m-d H:i:s'", Context) of
+    case fetch_since_pager(Endpoint, DT, 1, "'Y-m-d H:i:s'", Context) of
         {error, #{ <<"info">> := _}} ->
             %% Detect datetime format used by Adlib server for modified.
             %% Unfortunately, this can differ between Adlib instances.
             %% Ymd is the legacy format.
-            fetch_since_pager(DT, Endpoint, 1, "Ymd", Context);
+            fetch_since_pager(Endpoint, DT, 1, "Ymd", Context);
         Result ->
             Result
     end.
 
 
 %% @doc Continuation function returned from fetch_since/3.
--spec fetch_since_pager(Since, Endpoint, Offset, DateFormat, z:context()) -> {ok, RecsCont} | {error, api_error()}
-    when Since :: calendar:datetime() | undefined,
-         Endpoint :: mod_adlib:adlib_endpoint(),
+-spec fetch_since_pager(Endpoint, Since, Offset, DateFormat, z:context()) -> {ok, RecsCont} | {error, api_error()}
+    when Endpoint :: mod_adlib:adlib_endpoint(),
+         Since :: calendar:datetime() | undefined,
          Offset :: pos_integer(),
          DateFormat :: string(),
          RecsCont :: { list(map()), fun(() -> {ok, RecsCont} | {error, api_error()}) }.
-fetch_since_pager(Since, Endpoint, Offset, DateFormat, Context) ->
+fetch_since_pager(Endpoint, Since, Offset, DateFormat, Context) ->
     #adlib_endpoint{
         api_url = URL,
         database = Database,
@@ -174,7 +174,7 @@ fetch_since_pager(Since, Endpoint, Offset, DateFormat, Context) ->
                 Hits1 > ?ADLIB_PAGELEN + Offset ->
                     Offset1 = ?ADLIB_PAGELEN + Offset,
                     {next, fun() ->
-                        ?MODULE:fetch_since_pager(Since, Endpoint, Offset1, DateFormat, Context)
+                        ?MODULE:fetch_since_pager(Endpoint, Since, Offset1, DateFormat, Context)
                     end};
                 true ->
                     done

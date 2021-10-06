@@ -57,10 +57,10 @@ This returns a list of databases:
 
 Records are fetched using their `priref` id.
 
-Let `E` be a configured `#adlib_endpoint{}` then this fetches a specific record:
+Let `Endpoint` be a configured `#adlib_endpoint{}` then this fetches a specific record:
 
 ```erlang
-adlib_api:fetch_record(10594, E, z:c(yoursite)).
+adlib_api:fetch_record(Endpoint, 10594, z:c(yoursite)).
 ```
 
 Returns:
@@ -96,7 +96,7 @@ by Adlib. Adlib uses local time in their output, where the timezone depends on t
 configuration of the Adlib server.
 
 ```erlang
-adlib_api:fetch_since(<<"-1 month">>, E, z:c(yoursite)).
+adlib_api:fetch_since(Endpoint, <<"-1 month">>, z:c(yoursite)).
 ```
 
 Returns:
@@ -122,7 +122,7 @@ The records are sorted by _priref_.
 To fetch all records, pass an empty date to the `fetch_since`:
 
 ```erlang
-adlib_api:fetch_since(<<"-1 month">>, E, z:c(yoursite)).
+adlib_api:fetch_since(Endpoint, undefined, z:c(yoursite)).
 ```
 
 The records are sorted by _priref_.
