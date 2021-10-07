@@ -16,9 +16,11 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
--module(adlib_api).
+-module(m_adlib_api).
 
 -export([
+    m_get/3,
+
     fetch_record/3,
     fetch_since/3,
     list_databases/2
@@ -29,9 +31,10 @@
     fetch_since_pager/5
     ]).
 
+-behaviour(zotonic_model).
 
 -include_lib("zotonic_core/include/zotonic.hrl").
--include("../..//include/mod_adlib.hrl").
+-include("../../include/mod_adlib.hrl").
 
 % Default timeout of z_url_fetch is 20sec, set to 50sec.
 -define(FETCH_TIMEOUT, 50000).
@@ -53,6 +56,31 @@
               | undefined.
 
 -export_type([ api_error/0, date/0 ]).
+
+
+%% @doc API interface for Adlib.
+-spec m_get( list(), zotonic_model:opt_msg(), z:context()) -> zotonic_model:return().
+m_get([ <<"list_databases">> | Rest ], #{ payload := Payload }, Context) ->
+    case z_acl:is_allowed(use, mod_adlib, Context) of
+        true ->
+            case maps:get(<<"api_url">>, Payload, undefined) of
+                AdlibUrl when is_binary(AdlibUrl) ->
+                    Endpoint = #adlib_endpoint{
+                        api_url = AdlibUrl,
+                        database = <<"collect">>
+                    },
+                    case list_databases(Endpoint, Context) of
+                        {ok, List} ->
+                            {ok, {List, Rest}};
+                        {error, _} = Error ->
+                            Error
+                    end;
+                _ ->
+                    {error, adlib_url_missing}
+            end;
+        false ->
+            {error, eacces}
+    end.
 
 
 %% @doc Fetch a single record from an adlib API endpoint.
