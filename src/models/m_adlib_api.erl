@@ -187,7 +187,7 @@ fetch_since_pager(Endpoint, Since, Offset, DateFormat, Context) ->
         {ok, #{
             <<"adlibxml">> := [
                 #{
-                    <<"diagnostic">> := #{ <<"hits">> := Hits },
+                    <<"diagnostic">> := [ #{ <<"hits">> := [ Hits ] } ],
                     <<"recordlist">> := Rs
                 }
             ]
@@ -240,9 +240,11 @@ list_databases(Url, Context) ->
     ],
     case fetch(Url, Params, Context) of
         {ok, #{
-            <<"adlibJSON">> := #{
-                <<"recordList">> := #{ <<"record">> := Rs }
-            }
+            <<"adlibxml">> := [
+                #{
+                    <<"recordlist">> := [ #{ <<"record">> := Rs } ]
+                }
+            ]
         }} ->
             Rs1 = lists:map(
                 fun(#{
