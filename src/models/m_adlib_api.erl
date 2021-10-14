@@ -101,7 +101,7 @@ fetch_record(Endpoint, Priref, Context) ->
         {ok, #{
             <<"adlibxml">> := [
                 #{ <<"recordlist">> := [
-                    #{ <<"record">> := R }
+                    #{ <<"record">> := [ R ] }
                 ] }
             ]
         }} ->
@@ -188,7 +188,11 @@ fetch_since_pager(Endpoint, Since, Offset, DateFormat, Context) ->
             <<"adlibxml">> := [
                 #{
                     <<"diagnostic">> := [ #{ <<"hits">> := [ Hits ] } ],
-                    <<"recordlist">> := Rs
+                    <<"recordlist">> := [
+                        #{
+                            <<"record">> := Rs
+                        }
+                    ]
                 }
             ]
         }} ->
