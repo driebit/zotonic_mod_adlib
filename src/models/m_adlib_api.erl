@@ -99,21 +99,21 @@ fetch_record(Endpoint, Priref, Context) ->
     ],
     case fetch(URL, Params, Context) of
         {ok, #{
-            <<"adlibXML">> := [
-                #{ <<"recordList">> := [
+            <<"adlibxml">> := [
+                #{ <<"recordlist">> := [
                     #{ <<"record">> := R }
                 ] }
             ]
         }} ->
             {ok, R};
         {ok, #{
-            <<"adlibXML">> := [
+            <<"adlibxml">> := [
                 #{ <<"diagnostic">> := [ #{<<"error">> := [ Error ] } ]}
             ]
         }} ->
             {error, Error};
         {ok, #{
-            <<"adlibXML">> := [
+            <<"adlibxml">> := [
                 #{ <<"diagnostic">> := [ #{ <<"hits">> := [ <<"0">> ] } ]}
             ]
         }} ->
@@ -185,10 +185,10 @@ fetch_since_pager(Endpoint, Since, Offset, DateFormat, Context) ->
     ],
     case fetch(URL, Params, Context) of
         {ok, #{
-            <<"adlibXML">> := [
+            <<"adlibxml">> := [
                 #{
                     <<"diagnostic">> := #{ <<"hits">> := Hits },
-                    <<"recordList">> := Rs
+                    <<"recordlist">> := Rs
                 }
             ]
         }} ->
@@ -204,13 +204,13 @@ fetch_since_pager(Endpoint, Since, Offset, DateFormat, Context) ->
             end,
             {ok, {Rs, Next}};
         {ok, #{
-            <<"adlibXML">> := [
+            <<"adlibxml">> := [
                 #{ <<"diagnostic">> := [ #{<<"error">> := [ Error ] } ] }
             ]
         }} ->
             {error, Error};
         {ok, #{
-            <<"adlibXML">> := [
+            <<"adlibxml">> := [
                 #{ <<"diagnostic">> := [ #{ <<"hits">> := [ <<"0">> ] } ] }
             ]
         }} ->

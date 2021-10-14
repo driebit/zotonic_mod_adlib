@@ -26,12 +26,11 @@
 
 %% @doc Parse an XML document to a JSON compatible map. Attributes will be added
 %% as keys in an <tt>@attributes</tt> key. Elements will be mapped to keys with value lists.
+%% all keys are lowercased.
 -spec parse( XML :: binary() ) -> {ok, map()} | {error, term()}.
 parse(XML) when is_binary(XML) ->
-    io:format("~s~n~n~n", [ XML ]),
     case z_html_parse:parse(XML) of
         {ok, Tree} ->
-            io:format("~p~n~n~n~n", [ Tree ]),
             tree_to_map(Tree, #{});
         {error, _} = Error ->
             Error
@@ -40,6 +39,7 @@ parse({_, _, _} = Tree) ->
     tree_to_map(Tree, #{}).
 
 tree_to_map({Tag, [], Elts}, TagMap) when is_list(Elts) ->
+    TagL = z_string:to_lower(Tag),
     case lists:any(fun is_element/1, Elts) of
         true ->
             EltMap = lists:foldr(
@@ -47,16 +47,17 @@ tree_to_map({Tag, [], Elts}, TagMap) when is_list(Elts) ->
                 #{},
                 Elts),
             TagMap#{
-                Tag => [ EltMap | maps:get(Tag, TagMap, []) ]
+                TagL => [ EltMap | maps:get(TagL, TagMap, []) ]
             };
         false ->
             % Leave node, sub elements are values
             Vs = map_values(Elts),
             TagMap#{
-                Tag => lists:flatten([ Vs | maps:get(Tag, TagMap, []) ])
+                TagL => lists:flatten([ Vs | maps:get(TagL, TagMap, []) ])
             }
     end;
 tree_to_map({Tag, Attrs, Elts}, TagMap) when is_list(Elts) ->
+    TagL = z_string:to_lower(Tag),
     case lists:any(fun is_element/1, Elts) of
         true ->
             EltMap = lists:foldr(
@@ -64,19 +65,19 @@ tree_to_map({Tag, Attrs, Elts}, TagMap) when is_list(Elts) ->
                 #{},
                 Elts),
             EltMap1 = EltMap#{
-                <<"@attributes">> => maps:from_list(Attrs)
+                <<"@attributes">> => from_list(Attrs)
             },
             TagMap#{
-                Tag => [ EltMap1 | maps:get(Tag, TagMap, []) ]
+                TagL => [ EltMap1 | maps:get(TagL, TagMap, []) ]
             };
         false ->
             % Leave node, but with attributes
             V = #{
-                <<"@attributes">> => maps:from_list(Attrs),
+                <<"@attributes">> => from_list(Attrs),
                 <<"value">> => map_values(Elts)
             },
             TagMap#{
-                Tag => [ V | maps:get(Tag, TagMap, []) ]
+                TagL => [ V | maps:get(TagL, TagMap, []) ]
             }
     end;
 tree_to_map(_, TagMap) ->
@@ -93,6 +94,8 @@ is_element({Tag, Attrs, Elts}) when is_binary(Tag), is_list(Attrs), is_list(Elts
 is_element(_) ->
     false.
 
+from_list(L) ->
+    maps:from_list( lists:map(fun({T,V}) -> {z_string:to_lower(T), V} end, L) ).
 
 test() ->
     parse( {<<"Documentation">>,[],
