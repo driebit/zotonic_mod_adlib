@@ -66,18 +66,27 @@ m_adlib_api:fetch_record(Endpoint, 10594, z:c(yoursite)).
 Returns:
 
 ```erlang
-{ok, #{<<"@attributes">> =>
+{ok,#{<<"@attributes">> =>
           #{<<"created">> => <<"2021-05-16T15:19:38">>,
             <<"modification">> => <<"2021-05-20T16:32:20">>,
-            <<"priref">> => <<"10594">>,
-            <<"selected">> => <<"False">>},
-      <<"Alternative_number">> =>
+            <<"priref">> => <<"10594">>,<<"selected">> => <<"False">>},
+      <<"alternative_number">> =>
           [#{<<"alternative_number">> => [<<"Carte di Castello 13">>]}],
+      <<"associated_subject">> =>
+          [#{<<"association.subject">> =>
+                 [#{<<"value">> =>
+                        [#{<<"@attributes">> =>
+                               #{<<"invariant">> => <<"false">>,<<"lang">> => <<"nl-NL">>},
+                           <<"value">> => [<<"plattegrond / kaart">>]},
+                         #{<<"@attributes">> =>
+                               #{<<"invariant">> => <<"false">>,<<"lang">> => <<"en-GB">>},
+                           <<"value">> => [<<"Map/Chart/Plan">>]}]}],
+             <<"association.subject.latitude">> => [],
 
     (..)
 }}
-
 ```
+Note that all tag names and attributes are lowercased.
 
 If the record is not found then `{error, enoent}` is returned.
 
