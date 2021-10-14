@@ -92,8 +92,6 @@ fetch_record(Endpoint, Priref, Context) ->
     } = Endpoint,
     Priref1 = z_convert:to_binary(Priref),
     Params = [
-        {output, json},
-        {xmltype, grouped},
         {database, Database},
         {limit, 1},
         {startfrom, 1},
@@ -101,26 +99,22 @@ fetch_record(Endpoint, Priref, Context) ->
     ],
     case fetch(URL, Params, Context) of
         {ok, #{
-            <<"adlibJSON">> := #{
-                <<"recordList">> := #{ <<"record">> := [ R ] }
-            }
+            <<"adlibXML">> := [
+                #{ <<"recordList">> := [ R ] }
+            ]
         }} ->
             {ok, R};
         {ok, #{
-            <<"adlibJSON">> := #{
-                <<"diagnostic">> := #{
-                    <<"error">> := Error
-                }
-            }
+            <<"adlibXML">> := [
+                #{ <<"diagnostic">> := [ #{<<"error">> := [ Error ] } ]}
+            ]
         }} ->
             {error, Error};
         {ok, #{
-            <<"adlibJSON">> := #{
-                <<"diagnostic">> := #{
-                    <<"hits">> := Hits
-                }
-            }
-        }} when Hits =:= 0; Hits =:= <<"0">> ->
+            <<"adlibXML">> := [
+                #{ <<"diagnostic">> := [ #{ <<"hits">> := [ <<"0">> ] } ]}
+            ]
+        }} ->
             {error, enoent};
         {error, _} = Error ->
             Error
@@ -181,7 +175,6 @@ fetch_since_pager(Endpoint, Since, Offset, DateFormat, Context) ->
         S -> <<"(", S/binary, ")">>
     end,
     Params = [
-        {output, json},
         {xmltype, grouped},
         {database, Database},
         {search, Search2},
@@ -190,12 +183,12 @@ fetch_since_pager(Endpoint, Since, Offset, DateFormat, Context) ->
     ],
     case fetch(URL, Params, Context) of
         {ok, #{
-            <<"adlibJSON">> := #{
-                <<"diagnostic">> := #{
-                    <<"hits">> := Hits
-                },
-                <<"recordList">> := #{ <<"record">> := Rs }
-            }
+            <<"adlibXML">> := [
+                #{
+                    <<"diagnostic">> := #{ <<"hits">> := Hits },
+                    <<"recordList">> := Rs
+                }
+            ]
         }} ->
             Hits1 = z_convert:to_integer(Hits),
             Next = if
@@ -209,20 +202,16 @@ fetch_since_pager(Endpoint, Since, Offset, DateFormat, Context) ->
             end,
             {ok, {Rs, Next}};
         {ok, #{
-            <<"adlibJSON">> := #{
-                <<"diagnostic">> := #{
-                    <<"error">> := Error
-                }
-            }
+            <<"adlibXML">> := [
+                #{ <<"diagnostic">> := [ #{<<"error">> := [ Error ] } ] }
+            ]
         }} ->
             {error, Error};
         {ok, #{
-            <<"adlibJSON">> := #{
-                <<"diagnostic">> := #{
-                    <<"hits">> := Hits
-                }
-            }
-        }} when Hits =:= 0; Hits =:= <<"0">> ->
+            <<"adlibXML">> := [
+                #{ <<"diagnostic">> := [ #{ <<"hits">> := [ <<"0">> ] } ] }
+            ]
+        }} ->
             {ok, {[], ok}};
         {error, _} = Error ->
             Error
@@ -244,7 +233,6 @@ list_databases(#adlib_endpoint{ api_url = Url }, Context) ->
     list_databases(Url, Context);
 list_databases(Url, Context) ->
     Params = [
-        {output, json},
         {xmltype, grouped},
         {command, listdatabases}
     ],
@@ -286,7 +274,7 @@ fetch(URL, Params, Context) ->
             [];
         {ok, {_FinalUrl, _Hs, _Length, Body}} ->
             try
-                {ok, jsx:decode(Body, [return_maps])}
+                {ok, adlib_xml:parse(Body)}
             catch
                 error:badarg ->
                     ?zError("Adlib client illegal return for endpoint ~s",
