@@ -100,7 +100,9 @@ fetch_record(Endpoint, Priref, Context) ->
     case fetch(URL, Params, Context) of
         {ok, #{
             <<"adlibXML">> := [
-                #{ <<"recordList">> := [ R ] }
+                #{ <<"recordList">> := [
+                    #{ <<"record">> := R }
+                ] }
             ]
         }} ->
             {ok, R};

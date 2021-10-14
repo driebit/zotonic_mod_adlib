@@ -19,19 +19,25 @@
 -module(adlib_xml).
 
 -export([
-    parse/1
+    parse/1,
+
+    test/0
     ]).
 
 %% @doc Parse an XML document to a JSON compatible map. Attributes will be added
 %% as keys in an <tt>@attributes</tt> key. Elements will be mapped to keys with value lists.
 -spec parse( XML :: binary() ) -> {ok, map()} | {error, term()}.
 parse(XML) when is_binary(XML) ->
+    io:format("~s~n~n~n", [ XML ]),
     case z_html_parse:parse(XML) of
         {ok, Tree} ->
+            io:format("~p~n~n~n~n", [ Tree ]),
             tree_to_map(Tree, #{});
         {error, _} = Error ->
             Error
-    end.
+    end;
+parse({_, _, _} = Tree) ->
+    tree_to_map(Tree, #{}).
 
 tree_to_map({Tag, [], Elts}, TagMap) when is_list(Elts) ->
     case lists:any(fun is_element/1, Elts) of
@@ -65,9 +71,12 @@ tree_to_map({Tag, Attrs, Elts}, TagMap) when is_list(Elts) ->
             };
         false ->
             % Leave node, but with attributes
-            #{
+            V = #{
                 <<"@attributes">> => maps:from_list(Attrs),
                 <<"value">> => map_values(Elts)
+            },
+            TagMap#{
+                Tag => [ V | maps:get(Tag, TagMap, []) ]
             }
     end;
 tree_to_map(_, TagMap) ->
@@ -83,3 +92,19 @@ is_element({Tag, Attrs, Elts}) when is_binary(Tag), is_list(Attrs), is_list(Elts
     true;
 is_element(_) ->
     false.
+
+
+test() ->
+    parse( {<<"Documentation">>,[],
+       [{<<"documentation.author">>,[],[<<"anoniem/anonymous">>]},
+        {<<"documentation.notes">>,[{<<"lang">>,<<>>}],[]},
+        {<<"documentation.page_reference">>,[],[]},
+        {<<"documentation.shelfmark">>,[],[]},
+        {<<"documentation.title">>,[],
+         [{<<"title">>,[],[<<"Landmonsterrollen">>]},
+          {<<"title">>,[],[<<"Landmonsterrollen">>]},
+          {<<"year_of_publication">>,[],[<<"1691-1790">>]}]},
+        {<<"documentation.title.lead_word">>,[{<<"lang">>,<<>>}],[]},
+        {<<"documentation.title.lref">>,[],[<<"900000009">>]}]}).
+
+
