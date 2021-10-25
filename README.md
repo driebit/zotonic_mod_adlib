@@ -142,9 +142,9 @@ The records are sorted by _priref_.
 There are basic routines to map an Adlib record to RDF statements.
 
 
-### Generate an unique URN for an Adlib record
+### Generate an unique URI for an Adlib record
 
-To identify a resource, an unique URN is needed. This routine generates the unique URN using
+To identify a resource, an unique URI is needed. This routine generates the unique URI using
 the Adlib endpoint specification and the _priref_ in the Adlib record.
 
 ```erlang
@@ -154,16 +154,16 @@ adlib_rdf:uri(Endpoint, Record).
 Returns something like:
 
 ```erlang
-{ok, <<"urn:adlib:foobar.adlibhosting.com/mydatabase/collect/10594">>}
+{ok, <<"adlib:foobar.adlibhosting.com/mydatabase/collect/10594">>}
 
 ```
 
-### Check if an URN matches an endpoint
+### Check if an URI matches an endpoint
 
-To find the endpoint for an Adlib URN you can check the URN against an Endpoint:
+To find the endpoint for an Adlib URI you can check the URI against an Endpoint:
 
 ```erlang
-adlib_rdf:is_matching_uri(Endpoint, <<"urn:adlib:foobar.adlibhosting.com/mydatabase/collect/10594">>).
+adlib_rdf:is_matching_uri(Endpoint, <<"adlib:foobar.adlibhosting.com/mydatabase/collect/10594">>).
 ```
 
 This returns a boolean (in this case `true`).

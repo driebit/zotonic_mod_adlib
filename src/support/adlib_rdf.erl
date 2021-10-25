@@ -47,7 +47,7 @@ uri(Endpoint, #{
         _ -> <<>>
     end,
     Uri = iolist_to_binary([
-        "urn:adlib:", Host, BaseDir,
+        "adlib:", Host, BaseDir,
         $/, Endpoint#adlib_endpoint.database,
         $/, Priref
     ]),
@@ -60,7 +60,7 @@ uri(_Endpoint, _Record) ->
 -spec is_matching_uri( Endpoint, Uri ) -> boolean()
     when Endpoint :: mod_adlib:adlib_endpoint(),
          Uri :: uri_string:uri_string().
-is_matching_uri(Endpoint, <<"urn:adlib:", Uri/binary>>) ->
+is_matching_uri(Endpoint, <<"adlib:", Uri/binary>>) ->
     #{
         host := Host,
         path := Path
@@ -79,7 +79,7 @@ is_matching_uri(_Endpoint, _Uri) ->
     false.
 
 
-%% @doc Extract RDF triples from an Adlib record.
+%% @doc Extract basic RDF triples from an Adlib record.
 -spec triples( Endpoint, Record, Context ) -> {ok, list( map() )} | {error, term()}
     when Endpoint :: mod_adlib:adlib_endpoint(),
          Record :: map(),
