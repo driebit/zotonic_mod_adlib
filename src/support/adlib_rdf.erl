@@ -29,14 +29,21 @@
 
 
 %% @doc Extract the unique resource URI from an Adlib record.
--spec uri( Endpoint, Record ) -> {ok, uri_string:uri_string()} | {error, nomatch}
+-spec uri( Endpoint, Record | Priref ) -> uri_string:uri_string()
     when Endpoint :: mod_adlib:adlib_endpoint(),
+         Priref :: binary() | integer() | [ binary() ],
          Record :: map().
 uri(Endpoint, #{
         <<"@attributes">> := #{
             <<"priref">> := Priref
         }
     }) ->
+    uri(Endpoint, Priref);
+uri(Endpoint, Priref) when is_integer(Priref) ->
+    uri(Endpoint, integer_to_binary(Priref));
+uri(Endpoint, [ Priref ]) when is_binary(Priref) ->
+    uri(Endpoint, Priref);
+uri(Endpoint, Priref) when is_binary(Priref) ->
     #{
         host := Host,
         path := Path
@@ -46,14 +53,11 @@ uri(Endpoint, #{
         [ <<>>, BD | _ ] -> <<"/", BD/binary>>;
         _ -> <<>>
     end,
-    Uri = iolist_to_binary([
+    iolist_to_binary([
         "adlib:", Host, BaseDir,
         $/, Endpoint#adlib_endpoint.database,
         $/, Priref
-    ]),
-    {ok, Uri};
-uri(_Endpoint, _Record) ->
-    {error, nomatch}.
+    ]).
 
 
 %% @doc Check if the URI belongs to the given Adlib endpoint.
