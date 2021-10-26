@@ -40,7 +40,7 @@
 -define(FETCH_TIMEOUT, 50000).
 
 % Default limit for Adlib searches
--define(ADLIB_PAGELEN, 100).
+-define(ADLIB_PAGELEN, 50).
 
 
 -type api_error() :: enoent
