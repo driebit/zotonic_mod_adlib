@@ -23,7 +23,10 @@
 
     fetch_record/3,
     fetch_since/3,
-    list_databases/2
+    list_databases/2,
+
+    image_url/2,
+    image_url_scaled/3
     ]).
 
 % Exported for continuation function returned from fetch_since.
@@ -111,20 +114,29 @@ fetch_record(Endpoint, Priref, Context) ->
                 #{ <<"diagnostic">> := [ #{<<"error">> := [ Error ] } ]}
             ]
         }} ->
+            lager:error("Adlib: Error fetching record ~s (~s ~s): ~p",
+                        [ Priref1, URL, Database, Error ]),
             {error, Error};
         {ok, #{
             <<"adlibxml">> := [
                 #{ <<"diagnostic">> := [ #{ <<"hits">> := [ <<"0">> ] } ]}
             ]
         }} ->
+            lager:error("Adlib: Error fetching record ~s (~s ~s): not found",
+                        [ Priref1, URL, Database ]),
             {error, enoent};
-        {error, _} = Error ->
+        {error, Reason} = Error ->
+            lager:error("Adlib: Error fetching record ~s (~s ~s): ~p",
+                        [ Priref1, URL, Database, Reason ]),
             Error
     end.
 
 
 %% @doc Fetch all records since a certain date. This returns the first set of records and
-%% a continuation function for the next set.
+%% a continuation function for the next set. This returns a minimal record with only the priref.
+%% Use the fetch_record function to fetch the complete record.
+%%
+%% More info: http://api.adlibsoft.com/api/functions/search
 -spec fetch_since(Endpoint, Since, z:context()) -> {ok, RecsCont} | {error, api_error()}
     when Endpoint :: mod_adlib:adlib_endpoint(),
          Since :: date(),
@@ -150,7 +162,10 @@ fetch_since(Endpoint, Since, Context) ->
     end.
 
 
-%% @doc Continuation function returned from fetch_since/3.
+%% @doc Continuation function returned from fetch_since/3. Only returns the priref for
+%% all records, use fetch_record to obtain the complete record.
+%%
+%% More info: http://api.adlibsoft.com/api/functions/search
 -spec fetch_since_pager(Endpoint, Since, Offset, DateFormat, z:context()) -> {ok, RecsCont} | {error, api_error()}
     when Endpoint :: mod_adlib:adlib_endpoint(),
          Since :: calendar:datetime() | undefined,
@@ -181,6 +196,7 @@ fetch_since_pager(Endpoint, Since, Offset, DateFormat, Context) ->
         {database, Database},
         {search, Search2},
         {startfrom, Offset},
+        {fields, "priref"},
         {limit, ?ADLIB_PAGELEN}
     ],
     case fetch(URL, Params, Context) of
@@ -206,20 +222,28 @@ fetch_since_pager(Endpoint, Since, Offset, DateFormat, Context) ->
                 true ->
                     done
             end,
+            lager:info("Adlib: fetch records since ~p: ~p found, offset ~p (~s ~s)",
+                       [ Since, Hits1, Offset, URL, Database ]),
             {ok, {Rs, Next}};
         {ok, #{
             <<"adlibxml">> := [
                 #{ <<"diagnostic">> := [ #{<<"error">> := [ Error ] } ] }
             ]
         }} ->
+            lager:error("Adlib: Error fetch records since ~p, offset ~p (~s ~s): ~p",
+                        [ Since, Offset, URL, Database, Error ]),
             {error, Error};
         {ok, #{
             <<"adlibxml">> := [
                 #{ <<"diagnostic">> := [ #{ <<"hits">> := [ <<"0">> ] } ] }
             ]
         }} ->
+            lager:info("Adlib: fetch records since ~p: ~p found, offset ~p (~s ~s)",
+                       [ Since, 0, Offset, URL, Database ]),
             {ok, {[], ok}};
-        {error, _} = Error ->
+        {error, Reason} = Error ->
+            lager:error("Adlib: Error fetch records since ~p, offset ~p (~s ~s): ~p",
+                        [ Since, Offset, URL, Database, Reason ]),
             Error
     end.
 
@@ -264,6 +288,40 @@ list_databases(Url, Context) ->
         {error, _} = Error ->
             Error
     end.
+
+%% @doc Generate the image_url for a named image.
+%% See http://api.adlibsoft.com/api/functions/getcontent
+-spec image_url( Endpoint, Filename ) -> Url
+    when Endpoint :: mod_adlib:adlib_endpoint(),
+         Filename :: binary() | string(),
+         Url :: binary().
+image_url(#adlib_endpoint{ api_url = Url }, Filename) ->
+    iolist_to_binary([
+        Url,
+        "?command=getcontent&server=images",
+        "&value=", z_url:url_encode(Filename)
+        ]).
+
+%% @doc Generate the image_url for a named image with a max bounding box. The returned
+%% Image fits in a square with the given size, it will not be upscaled. The image
+%% format will be JPEG.
+%% See http://api.adlibsoft.com/api/functions/getcontent
+-spec image_url_scaled( Endpoint, Filename, MaxSize ) -> Url
+    when Endpoint :: mod_adlib:adlib_endpoint(),
+         Filename :: binary() | string(),
+         Url :: binary(),
+         MaxSize :: non_neg_integer().
+image_url_scaled(#adlib_endpoint{ api_url = Url }, Filename, MaxSize) ->
+    Max = z_convert:to_binary(MaxSize),
+    iolist_to_binary([
+        Url,
+        "?command=getcontent&server=images",
+        "&scalemode=fit"
+        "&width=", Max,
+        "&height=", Max,
+        "&imageformat=jpg",
+        "&value=", z_url:url_encode(Filename)
+        ]).
 
 
 %% @doc Fetch data from an Adlib API endpoint.
