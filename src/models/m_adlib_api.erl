@@ -26,7 +26,7 @@
     list_databases/2,
 
     image_url/2,
-    image_url_scaled/3
+    image_url_scaled/4
     ]).
 
 % Exported for continuation function returned from fetch_since.
@@ -40,7 +40,10 @@
 -include("../../include/mod_adlib.hrl").
 
 % Default timeout of z_url_fetch is 20sec, set to 50sec.
--define(FETCH_TIMEOUT, 50000).
+-define(FETCH_TIMEOUT, 60000).
+
+% Image fetch timeout is 10 minutes.
+-define(FETCH_IMAGE_TIMEOUT, 600000).
 
 % Default limit for Adlib searches
 -define(ADLIB_PAGELEN, 50).
@@ -291,38 +294,88 @@ list_databases(Url, Context) ->
 
 %% @doc Generate the image_url for a named image.
 %% See http://api.adlibsoft.com/api/functions/getcontent
--spec image_url( Endpoint, Filename ) -> Url
+-spec image_url( Endpoint, Filename ) -> {ok, Url}
     when Endpoint :: mod_adlib:adlib_endpoint(),
          Filename :: binary() | string(),
          Url :: binary().
 image_url(#adlib_endpoint{ api_url = Url }, Filename) ->
-    iolist_to_binary([
+    {ok, iolist_to_binary([
         Url,
-        "?command=getcontent&server=images",
+        "?command=getcontent",
+        "&server=images",
         "&value=", z_url:url_encode(Filename)
-        ]).
+        ])}.
 
 %% @doc Generate the image_url for a named image with a max bounding box. The returned
 %% Image fits in a square with the given size, it will not be upscaled. The image
 %% format will be JPEG.
+%% As the Adlib API does not support fetching the image size we download the imahe
+%% to determine its bounding box. From there we generate the requested URL.
 %% See http://api.adlibsoft.com/api/functions/getcontent
--spec image_url_scaled( Endpoint, Filename, MaxSize ) -> Url
+-spec image_url_scaled( Endpoint, Filename, MaxSize, Context ) -> {ok, Url} | {error, term()}
     when Endpoint :: mod_adlib:adlib_endpoint(),
          Filename :: binary() | string(),
          Url :: binary(),
-         MaxSize :: non_neg_integer().
-image_url_scaled(#adlib_endpoint{ api_url = Url }, Filename, MaxSize) ->
-    Max = z_convert:to_binary(MaxSize),
-    iolist_to_binary([
+         MaxSize :: non_neg_integer(),
+         Context :: z:context().
+image_url_scaled(#adlib_endpoint{ api_url = Url }, Filename, MaxSize, Context) ->
+    FullImageUrl = iolist_to_binary([
         Url,
-        "?command=getcontent&server=images",
-        "&scalemode=fit"
-        "&width=", Max,
-        "&height=", Max,
-        "&imageformat=jpg",
+        "?command=getcontent",
+        "&server=images",
         "&value=", z_url:url_encode(Filename)
-        ]).
+        ]),
+    Options = [
+        {fetch_options, [ {timeout, ?FETCH_IMAGE_TIMEOUT} ]}
+    ],
+    case m_media:download_file(FullImageUrl, Options, Context) of
+        {ok, TmpFile, _} ->
+            case z_media_identify:identify_file_direct(TmpFile, <<"download">>) of
+                {ok, #{
+                    <<"width">> := Width,
+                    <<"height">> := Height,
+                    <<"mime">> := <<"image/", _/binary>> = Mime
+                }} ->
+                    file:delete(TmpFile),
+                    {W, H} = scale(MaxSize, Width, Height),
+                    Format = format(Mime, W, H),
+                    {ok, iolist_to_binary([
+                            Url,
+                            "?command=getcontent",
+                            "&server=images",
+                            "&width=", integer_to_list(W),
+                            "&height=", integer_to_list(H),
+                            "&format=", Format,
+                            "&scalemode=fit",
+                            "&value=", z_url:url_encode(Filename)
+                            ])};
+                {ok, #{
+                    <<"mime">> := _
+                }} ->
+                    % Not an image, use original data URL
+                    file:delete(TmpFile),
+                    {ok, FullImageUrl};
+                {error, _} = Error ->
+                    file:delete(TmpFile),
+                    Error
+            end;
+        {error, _} = Error ->
+            Error
+    end.
 
+scale(Max, Width, Height) when Max > Height, Max > Width ->
+    {Width, Height};
+scale(Max, Width, Height) when Width >= Height, Width > Max ->
+    {Max, erlang:trunc(Height * (Max / Width))};
+scale(Max, Width, Height) ->
+    {erlang:trunc(Width * (Max / Height)), Max}.
+
+format(_, W, _) when W > 1000 -> <<"jpg">>;
+format(_, _, H) when H > 1000 -> <<"jpg">>;
+format(<<"image/png">>, _, _) -> <<"png">>;
+format(<<"image/gif">>, _, _) -> <<"png">>;
+format(<<"image/tiff">>, _, _) -> <<"png">>;
+format(_, _, _) -> <<"jpg">>.
 
 %% @doc Fetch data from an Adlib API endpoint.
 fetch(URL, Params, Context) ->
