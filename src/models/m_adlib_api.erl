@@ -31,7 +31,7 @@
 
 % Exported for continuation function returned from fetch_since.
 -export([
-    fetch_since_pager/5
+    fetch_since_pager/4
     ]).
 
 -behaviour(zotonic_model).
@@ -154,32 +154,24 @@ fetch_since(Endpoint, Since, Context) ->
         _ ->
             z_datetime:to_datetime(Since)
     end,
-    case fetch_since_pager(Endpoint, DT, 1, "'Y-m-d H:i:s'", Context) of
-        {error, #{ <<"info">> := _}} ->
-            %% Detect datetime format used by Adlib server for modified.
-            %% Unfortunately, this can differ between Adlib instances.
-            %% Ymd is the legacy format.
-            fetch_since_pager(Endpoint, DT, 1, "Ymd", Context);
-        Result ->
-            Result
-    end.
+    fetch_since_pager(Endpoint, DT, 1, Context).
 
 
 %% @doc Continuation function returned from fetch_since/3. Only returns the priref for
 %% all records, use fetch_record to obtain the complete record.
 %%
 %% More info: http://api.adlibsoft.com/api/functions/search
--spec fetch_since_pager(Endpoint, Since, Offset, DateFormat, z:context()) -> {ok, RecsCont} | {error, api_error()}
+-spec fetch_since_pager(Endpoint, Since, Offset, z:context()) -> {ok, RecsCont} | {error, api_error()}
     when Endpoint :: mod_adlib:adlib_endpoint(),
          Since :: calendar:datetime() | undefined,
          Offset :: pos_integer(),
-         DateFormat :: string(),
          RecsCont :: { list(map()), fun(() -> {ok, RecsCont} | {error, api_error()}) }.
-fetch_since_pager(Endpoint, Since, Offset, DateFormat, Context) ->
+fetch_since_pager(Endpoint, Since, Offset, Context) ->
     #adlib_endpoint{
         api_url = URL,
         database = Database,
-        extra_arguments = ExtraArgs
+        extra_arguments = ExtraArgs,
+        date_format = DateFormat
     } = Endpoint,
     Search = build_search_args(ExtraArgs),
     Search1 = case Since of
@@ -220,7 +212,7 @@ fetch_since_pager(Endpoint, Since, Offset, DateFormat, Context) ->
                 Hits1 > ?ADLIB_PAGELEN + Offset ->
                     Offset1 = ?ADLIB_PAGELEN + Offset,
                     {next, fun() ->
-                        ?MODULE:fetch_since_pager(Endpoint, Since, Offset1, DateFormat, Context)
+                        ?MODULE:fetch_since_pager(Endpoint, Since, Offset1, Context)
                     end};
                 true ->
                     done
@@ -346,7 +338,6 @@ image_url_scaled(#adlib_endpoint{ api_url = Url }, Filename, MaxSize, Context) -
                             "&width=", integer_to_list(W),
                             "&height=", integer_to_list(H),
                             "&format=", Format,
-                            "&scalemode=fit",
                             "&value=", z_url:url_encode(Filename)
                             ])};
                 {ok, #{
