@@ -1,7 +1,7 @@
 Adlib support for Zotonic
 =========================
 
-[Adlib](http://www.adlibsoft.nl). is a collection organization and management tool for museums and libraries.
+[Adlib](http://www.adlibsoft.nl) is a collection organization and management tool for museums and libraries.
 
 This [Zotonic](http://www.zotonic.com) module adds support routines for accessing and importing these collections into a Zotonic system.
 
@@ -16,6 +16,7 @@ The remote Adlib endpoint is configured using a record:
     api_url = <<"https://foobar.adlibhosting.com/mydatabase/wwwopac.ashx">>,
     database = <<"collect">>,
     extra_arguments = [],
+    date_format = "'Y-m-d H:i:s'",
     timezone = <<"UTC">>
 }
 
@@ -25,6 +26,7 @@ The API URL is the base URL for all API calls.
 
 The database is one of the databases available on the remote system.
 
+The date_format is there to support legacy Adlib systems, older systems might need `"Ymd"` as format.
 
 ### Listing all databases in Adlib
 
