@@ -86,6 +86,21 @@ m_get([ <<"list_databases">> | Rest ], #{ payload := Payload }, Context) ->
             end;
         false ->
             {error, eacces}
+    end;
+m_get([ <<"endpoints">> | Rest ], _, Context) ->
+    case z_acl:is_allowed(use, mod_adlib, Context) of
+        true ->
+            Es = lists:map(
+                fun(E) ->
+                    #{
+                        <<"name">> => E#adlib_endpoint.name,
+                        <<"database">> => E#adlib_endpoint.database
+                    }
+                end,
+                lists:sort( mod_adlib:endpoints(Context) )),
+            {ok, {Es, Rest}};
+        false ->
+            {error, eacces}
     end.
 
 
