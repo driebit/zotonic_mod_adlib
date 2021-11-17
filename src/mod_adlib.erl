@@ -86,7 +86,16 @@ observe_rsc_import_fetch(#rsc_import_fetch{ uri = <<"adlib:", _/binary>> = Uri }
     case uri_to_endpoint(Uri, Context) of
         {ok, Endpoint} ->
             Priref = adlib_rdf:uri_to_priref(Uri),
-            triples(Endpoint, Priref, Context);
+            case triples(Endpoint, Priref, Context) of
+                {ok, Triples} ->
+                    io:format("~p~n", [ Triples ]),
+                    {ok, #{
+                        <<"uri">> => adlib_rdf:uri(Endpoint, Priref),
+                        <<"rdf_triples">> => Triples
+                    }};
+                {error, _} = Error ->
+                    Error
+            end;
         {error, _} ->
             undefined
     end;
@@ -221,7 +230,11 @@ import_record(#adlib_endpoint{} = Endpoint, Priref, Context) ->
                 ]},
                 {uri_template, adlib_rdf:uri(Endpoint, <<":id">>)}
             ],
-            case m_rsc_import:import(Triples, Options, Context) of
+            Data = #{
+                <<"rdf_triples">> => Triples,
+                <<"uri">> => adlib_rdf:uri(Endpoint, Priref)
+            },
+            case m_rsc_import:import(Data, Options, Context) of
                 {ok, {Id, _}} -> {ok, Id};
                 {error, _} = Error -> Error
             end;
