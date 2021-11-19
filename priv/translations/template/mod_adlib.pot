@@ -1,0 +1,55 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+# NB: Consider using poEdit <http://poedit.sourceforge.net>
+#
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ./_build/default/lib/zotonic_mod_adlib/priv/templates/_admin_status.tpl:15
+msgid ""
+"Import Adlib database"
+msgstr ""
+""
+
+#: ./_build/default/lib/zotonic_mod_adlib/priv/templates/_admin_status.tpl:19
+msgid ""
+"Message log"
+msgstr ""
+""
+
+#: ./_build/default/lib/zotonic_mod_adlib/priv/templates/_admin_status.tpl:17
+msgid ""
+"Select an Adlib database to import all documents from."
+msgstr ""
+""
+
+#: ./_build/default/lib/zotonic_mod_adlib/src/mod_adlib.erl:78
+msgid ""
+"Started import of Adlib database."
+msgstr ""
+""
+
+#: ./_build/default/lib/zotonic_mod_adlib/priv/templates/_admin_status.tpl:18
+msgid ""
+"The import will be running in the background, progress is reported in the"
+msgstr ""
+""
+
+#: ./_build/default/lib/zotonic_mod_adlib/src/mod_adlib.erl:80
+msgid ""
+"You are not allowed to use mod_adlib."
+msgstr ""
+""

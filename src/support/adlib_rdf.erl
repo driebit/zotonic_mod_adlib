@@ -20,8 +20,8 @@
 
 -export([
     uri/2,
-    is_matching_uri/2,
-    triples/3
+    uri_to_priref/1,
+    is_matching_uri/2
     ]).
 
 
@@ -59,6 +59,12 @@ uri(Endpoint, Priref) when is_binary(Priref) ->
         $/, Priref
     ]).
 
+%% @doc Extract the priref from a valid adlib uri.
+-spec uri_to_priref( binary() ) -> integer().
+uri_to_priref(<<"adlib:", _/binary>> = Uri) ->
+    Priref = lists:last(binary:split(Uri, <<"/">>, [ global ])),
+    binary_to_integer(Priref).
+
 
 %% @doc Check if the URI belongs to the given Adlib endpoint.
 -spec is_matching_uri( Endpoint, Uri ) -> boolean()
@@ -79,15 +85,5 @@ is_matching_uri(Endpoint, <<"adlib:", Uri/binary>>) ->
         [ Host, BaseDir, Database1, _Id ] -> true;
         _ -> false
     end;
-is_matching_uri(_Endpoint, _Uri) ->
+is_matching_uri(#adlib_endpoint{}, _Uri) ->
     false.
-
-
-%% @doc Extract basic RDF triples from an Adlib record.
--spec triples( Endpoint, Record, Context ) -> {ok, list( map() )} | {error, term()}
-    when Endpoint :: mod_adlib:adlib_endpoint(),
-         Record :: map(),
-         Context :: z:context().
-triples(Endpoint, Record, Context) ->
-    {ok, []}.
-

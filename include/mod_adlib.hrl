@@ -10,5 +10,13 @@
     database :: binary(),
     extra_arguments = [] :: list( mod_adlib:api_arg() ),
     date_format = "'Y-m-d H:i:s'" :: string(),
-    timezone = <<"UTC">> :: binary()
+    timezone = <<"UTC">> :: binary(),
+    triples_fun = undefined :: fun( (mod_adlib:adlib_endpoint(), map(), z:context())
+                                 -> {ok, [ zotonic_rdf:rdf_triple() ]} | {error, term()})
+                            | undefined
 }).
+
+% Notification to collect all adlib endpoints from the site and modules.
+% Type: map
+% Return: [ mod_adlib:adlib_endpoint() ]
+-record(adlib_endpoints, {}).
