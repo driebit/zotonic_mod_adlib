@@ -86,14 +86,28 @@ observe_rsc_import_fetch(#rsc_import_fetch{ uri = <<"adlib:", _/binary>> = Uri }
     case uri_to_endpoint(Uri, Context) of
         {ok, Endpoint} ->
             Priref = adlib_rdf:uri_to_priref(Uri),
-            case triples(Endpoint, Priref, Context) of
-                {ok, Triples} ->
-                    {ok, #{
-                        <<"uri">> => adlib_rdf:uri(Endpoint, Priref),
-                        <<"rdf_triples">> => Triples
-                    }};
-                {error, _} = Error ->
-                    Error
+            try
+                case triples(Endpoint, Priref, Context) of
+                    {ok, Triples} ->
+                        {ok, #{
+                            <<"uri">> => adlib_rdf:uri(Endpoint, Priref),
+                            <<"rdf_triples">> => Triples
+                        }};
+                    {error, Reason} = Error ->
+                        ?zWarning(
+                            "Adlib: import triples mapping failed from endpoint '~s' priref '~p': ~p (uri ~s)",
+                            [ Endpoint#adlib_endpoint.name, Priref, Reason, Uri ],
+                            Context),
+                        Error
+                end
+            catch
+                Type:Err:Stack ->
+                    ?zError("Adlib import error from endpoint '~s' priref '~p' Error: ~p:~p",
+                            [ Endpoint#adlib_endpoint.name, Priref, Type, Err ],
+                            Context),
+                    lager:error("Adlib import error from endpoint '~s' priref '~p' (uri ~s). Error: ~p:~p (stack ~p)",
+                                [ Endpoint#adlib_endpoint.name, Priref, Uri, Type, Err, Stack ]),
+                    {error, Err}
             end;
         {error, _} ->
             undefined
@@ -129,19 +143,19 @@ import_all_async_task(Endpoint, Context) ->
     jobs:run(zotonic_singular_job, fun() -> import_all(Endpoint, Context) end).
 
 
--spec import_all( Endpoint, Context ) -> {ok, Count} | {error, term()}
+-spec import_all( Endpoint, Context ) -> {ok, Stats} | {error, term()}
     when Endpoint :: adlib_endpoint() | binary(),
          Context :: z:context(),
-         Count :: non_neg_integer().
+         Stats :: map().
 import_all(Endpoint, Context) ->
     import_since(Endpoint, undefined, Context).
 
 
--spec import_since( Endpoint, Since, Context ) -> {ok, Count} | {error, term()}
+-spec import_since( Endpoint, Since, Context ) -> {ok, Stats} | {error, term()}
     when Endpoint :: adlib_endpoint() | binary(),
          Since :: m_adlib_api:date(),
          Context :: z:context(),
-         Count :: non_neg_integer().
+         Stats :: map().
 import_since(Name, Since, Context) when is_binary(Name) ->
     case name_to_endpoint(Name, Context) of
         {ok, E} -> import_since(E, Since, Context);
@@ -152,43 +166,55 @@ import_since(#adlib_endpoint{} = Endpoint, Since, Context) ->
         "Adlib: started import from endpoint '~s' since ~p",
         [ Endpoint#adlib_endpoint.name, Since ],
         Context),
-    import_all_loop(m_adlib_api:fetch_since(Endpoint, Since, Context), 0, Endpoint, Context).
+    Stats = #{
+        total => 0,
+        import_count => 0,
+        error_count => 0,
+        errors => []
+    },
+    import_all_loop(m_adlib_api:fetch_since(Endpoint, Since, Context), Stats, Endpoint, Context).
 
 
-import_all_loop(done, Count, _Endpoint, _Context) ->
-    {ok, Count};
-import_all_loop({error, _} = Error, _Count, _Endpoint, _Context) ->
+import_all_loop(done, Stats, _Endpoint, _Context) ->
+    {ok, Stats};
+import_all_loop({error, _} = Error, _Stats, Endpoint, Context) ->
+    ?zError(
+        "Adlib: data fetch error from endpoint '~s' error ~p",
+        [ Endpoint#adlib_endpoint.name, Error ],
+        Context),
     Error;
-import_all_loop({ok, {Recs, Cont}}, Count, Endpoint, Context) ->
-    Count1 = lists:foldl(
+import_all_loop({ok, {Recs, Cont}}, Stats, Endpoint, Context) ->
+    Stats1 = lists:foldl(
         fun(#{ <<"@attributes">> := #{ <<"priref">> := PrirefAttr } }, Acc) ->
             Priref = z_convert:to_integer(PrirefAttr),
             case import_record(Endpoint, Priref, Context) of
-                {ok, Id} ->
-                    ?zInfo(
-                        "Adlib: import from endpoint '~s' priref '~p' to rsc id ~p",
-                        [ Endpoint#adlib_endpoint.name, Priref, Id ],
-                        Context),
-                    Acc+1;
-                {error, Reason} ->
-                    ?zWarning(
-                        "Adlib: import from endpoint '~s' priref '~p' error ~p",
-                        [ Endpoint#adlib_endpoint.name, Priref, Reason ],
-                        Context),
-                    Acc
+                {ok, _Id} ->
+                    Acc#{
+                        total => maps:get(total, Acc) + 1,
+                        import_count => maps:get(import_count, Acc) + 1
+                    };
+                {error, _} ->
+                    Acc#{
+                        total => maps:get(total, Acc) + 1,
+                        error_count => maps:get(error_count, Acc) + 1,
+                        errors => [ Priref | maps:get(errors, Acc) ]
+                    }
             end
         end,
-        Count,
+        Stats,
         Recs),
     case Cont of
         {next, ContFun} ->
-            ?MODULE:import_all_loop(ContFun(), Count1, Endpoint, Context);
+            ?MODULE:import_all_loop(ContFun(), Stats1, Endpoint, Context);
         done ->
             ?zInfo(
-                "Adlib: import from endpoint '~s' finished, imported ~p documents",
-                [ Endpoint#adlib_endpoint.name, Count1 ],
+                "Adlib: import from endpoint '~s' finished, imported ~p, failed ~p",
+                [ Endpoint#adlib_endpoint.name,
+                  maps:get(import_count, Stats1),
+                  maps:get(error_count, Stats1)
+                ],
                 Context),
-            {ok, Count1}
+            {ok, Stats1}
     end.
 
 
@@ -219,26 +245,51 @@ import_record(Name, Priref, Context) when is_binary(Name) ->
         {error, _} = Error -> Error
     end;
 import_record(#adlib_endpoint{} = Endpoint, Priref, Context) ->
-    case triples(Endpoint, Priref, Context) of
-        {ok, Triples} ->
-            Options = [
-                {import_edges, 1},
-                {fetch_options, [
-                    {timeout, ?MEDIA_FETCH_TIMEOUT},
-                    {max_length, ?MEDIA_FETCH_MAX_LENGTH}
-                ]},
-                {uri_template, adlib_rdf:uri(Endpoint, <<":id">>)}
-            ],
-            Data = #{
-                <<"rdf_triples">> => Triples,
-                <<"uri">> => adlib_rdf:uri(Endpoint, Priref)
-            },
-            case m_rsc_import:import(Data, Options, Context) of
-                {ok, {Id, _}} -> {ok, Id};
-                {error, _} = Error -> Error
-            end;
-        {error, _} = Error ->
-            Error
+    Uri = adlib_rdf:uri(Endpoint, Priref),
+    try
+        case triples(Endpoint, Priref, Context) of
+            {ok, Triples} ->
+                Options = [
+                    {import_edges, 1},
+                    {fetch_options, [
+                        {timeout, ?MEDIA_FETCH_TIMEOUT},
+                        {max_length, ?MEDIA_FETCH_MAX_LENGTH}
+                    ]},
+                    {uri_template, adlib_rdf:uri(Endpoint, <<":id">>)}
+                ],
+                Data = #{
+                    <<"rdf_triples">> => Triples,
+                    <<"uri">> => adlib_rdf:uri(Endpoint, Priref)
+                },
+                case m_rsc_import:import(Data, Options, Context) of
+                    {ok, {Id, _}} ->
+                        ?zDebug(
+                            "Adlib: import ok from endpoint '~s' priref '~p' to rsc id ~p (uri ~s)",
+                            [ Endpoint#adlib_endpoint.name, Priref, Id, Uri ],
+                            Context),
+                        {ok, Id};
+                    {error, Reason} = Error ->
+                        ?zWarning(
+                            "Adlib: import error from endpoint '~s' priref '~p': ~p (uri ~s)",
+                            [ Endpoint#adlib_endpoint.name, Priref, Reason, Uri],
+                            Context),
+                        Error
+                end;
+            {error, Reason} = Error ->
+                ?zWarning(
+                    "Adlib: import triples mapping failed from endpoint '~s' priref '~p': ~p (uri ~s)",
+                    [ Endpoint#adlib_endpoint.name, Priref, Reason, Uri ],
+                    Context),
+                Error
+        end
+    catch
+        Type:Err:Stack ->
+            ?zError("Adlib import error from endpoint '~s' priref '~p' Error: ~p:~p",
+                    [ Endpoint#adlib_endpoint.name, Priref, Type, Err ],
+                    Context),
+            lager:error("Adlib import error from endpoint '~s' priref '~p' (uri ~s). Error: ~p:~p (stack ~p)",
+                        [ Endpoint#adlib_endpoint.name, Priref, Uri, Type, Err, Stack ]),
+            {error, Err}
     end.
 
 -spec triples(Endpoint, Priref, Context) -> {ok, Triples} | {error, term()}
