@@ -36,6 +36,7 @@
 
 -behaviour(zotonic_model).
 
+-include_lib("kernel/include/logger.hrl").
 -include_lib("zotonic_core/include/zotonic.hrl").
 -include("../../include/mod_adlib.hrl").
 
@@ -132,20 +133,20 @@ fetch_record(Endpoint, Priref, Context) ->
                 #{ <<"diagnostic">> := [ #{<<"error">> := [ Error ] } ]}
             ]
         }} ->
-            lager:error("Adlib: Error fetching record ~s (~s ~s): ~p",
-                        [ Priref1, URL, Database, Error ]),
+            ?LOG_ERROR("Adlib: Error fetching record ~s (~s ~s): ~p",
+                       [ Priref1, URL, Database, Error ]),
             {error, Error};
         {ok, #{
             <<"adlibxml">> := [
                 #{ <<"diagnostic">> := [ #{ <<"hits">> := [ <<"0">> ] } ]}
             ]
         }} ->
-            lager:error("Adlib: Error fetching record ~s (~s ~s): not found",
-                        [ Priref1, URL, Database ]),
+            ?LOG_ERROR("Adlib: Error fetching record ~s (~s ~s): not found",
+                       [ Priref1, URL, Database ]),
             {error, enoent};
         {error, Reason} = Error ->
-            lager:error("Adlib: Error fetching record ~s (~s ~s): ~p",
-                        [ Priref1, URL, Database, Reason ]),
+            ?LOG_ERROR("Adlib: Error fetching record ~s (~s ~s): ~p",
+                       [ Priref1, URL, Database, Reason ]),
             Error
     end.
 
@@ -232,28 +233,28 @@ fetch_since_pager(Endpoint, Since, Offset, Context) ->
                 true ->
                     done
             end,
-            lager:info("Adlib: fetch records since ~p: ~p found, offset ~p (~s ~s)",
-                       [ Since, Hits1, Offset, URL, Database ]),
+            ?LOG_NOTICE("Adlib: fetch records since ~p: ~p found, offset ~p (~s ~s)",
+                        [ Since, Hits1, Offset, URL, Database ]),
             {ok, {Rs, Next}};
         {ok, #{
             <<"adlibxml">> := [
                 #{ <<"diagnostic">> := [ #{<<"error">> := [ Error ] } ] }
             ]
         }} ->
-            lager:error("Adlib: Error fetch records since ~p, offset ~p (~s ~s): ~p",
-                        [ Since, Offset, URL, Database, Error ]),
+            ?LOG_ERROR("Adlib: Error fetch records since ~p, offset ~p (~s ~s): ~p",
+                       [ Since, Offset, URL, Database, Error ]),
             {error, Error};
         {ok, #{
             <<"adlibxml">> := [
                 #{ <<"diagnostic">> := [ #{ <<"hits">> := [ <<"0">> ] } ] }
             ]
         }} ->
-            lager:info("Adlib: fetch records since ~p: ~p found, offset ~p (~s ~s)",
+            ?LOG_ERROR("Adlib: fetch records since ~p: ~p found, offset ~p (~s ~s)",
                        [ Since, 0, Offset, URL, Database ]),
             {ok, {[], ok}};
         {error, Reason} = Error ->
-            lager:error("Adlib: Error fetch records since ~p, offset ~p (~s ~s): ~p",
-                        [ Since, Offset, URL, Database, Reason ]),
+            ?LOG_ERROR("Adlib: Error fetch records since ~p, offset ~p (~s ~s): ~p",
+                       [ Since, Offset, URL, Database, Reason ]),
             Error
     end.
 
@@ -404,7 +405,7 @@ fetch(URL, Params, Context) ->
                 error:badarg ->
                     ?zError("Adlib client illegal return for endpoint ~s",
                             [ URL ], Context),
-                    lager:error("Could not decode Adlib response: ~p", [Body]),
+                    ?LOG_ERROR("Could not decode Adlib response: ~p", [Body]),
                     []
             end;
         {error, {401, _FinalUrl, _Hs, _Length, _Body}} ->
