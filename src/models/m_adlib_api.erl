@@ -319,10 +319,10 @@ image_url(#adlib_endpoint{ api_url = Url }, Filename) ->
 %% As the Adlib API does not support fetching the image size we download the imahe
 %% to determine its bounding box. From there we generate the requested URL.
 %% See http://api.adlibsoft.com/api/functions/getcontent
--spec image_url_scaled( Endpoint, Filename, MaxSize, Context ) -> {ok, Url} | {error, term()}
+-spec image_url_scaled( Endpoint, Filename, MaxSize, Context ) -> {ok, UrlProps} | {error, term()}
     when Endpoint :: mod_adlib:adlib_endpoint(),
          Filename :: binary() | string(),
-         Url :: binary(),
+         UrlProps :: map(),
          MaxSize :: non_neg_integer(),
          Context :: z:context().
 image_url_scaled(#adlib_endpoint{ api_url = Url }, Filename, MaxSize, Context) ->
@@ -346,7 +346,7 @@ image_url_scaled(#adlib_endpoint{ api_url = Url }, Filename, MaxSize, Context) -
                     file:delete(TmpFile),
                     {W, H} = scale(MaxSize, Width, Height),
                     Format = format(Mime, W, H),
-                    {ok, iolist_to_binary([
+                    ImageUrl = iolist_to_binary([
                             Url,
                             "?command=getcontent",
                             "&server=images",
@@ -354,13 +354,24 @@ image_url_scaled(#adlib_endpoint{ api_url = Url }, Filename, MaxSize, Context) -
                             "&height=", integer_to_list(H),
                             "&format=", Format,
                             "&value=", z_url:url_encode(Filename)
-                            ])};
+                            ]),
+                    {ok, #{
+                        <<"url">> => ImageUrl,
+                        <<"mime">> => Mime,
+                        <<"width">> => W,
+                        <<"height">> => H
+                    }};
                 {ok, #{
-                    <<"mime">> := _
+                    <<"mime">> := Mime
                 }} ->
                     % Not an image, use original data URL
                     file:delete(TmpFile),
-                    {ok, FullImageUrl};
+                    {ok, #{
+                        <<"url">> => FullImageUrl,
+                        <<"mime">> => Mime,
+                        <<"width">> => undefined,
+                        <<"height">> => undefined
+                    }};
                 {error, _} = Error ->
                     file:delete(TmpFile),
                     Error
