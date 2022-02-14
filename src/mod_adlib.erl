@@ -67,6 +67,7 @@
 -define(MEDIA_FETCH_TIMEOUT, 10*60*1000).
 -define(MEDIA_FETCH_MAX_LENGTH, 500*1000*1000).
 
+-include_lib("kernel/include/logger.hrl").
 -include_lib("zotonic_core/include/zotonic.hrl").
 
 
@@ -105,8 +106,9 @@ observe_rsc_import_fetch(#rsc_import_fetch{ uri = <<"adlib:", _/binary>> = Uri }
                     ?zError("Adlib import error from endpoint '~s' priref '~p' Error: ~p:~p",
                             [ Endpoint#adlib_endpoint.name, Priref, Type, Err ],
                             Context),
-                    lager:error("Adlib import error from endpoint '~s' priref '~p' (uri ~s). Error: ~p:~p (stack ~p)",
-                                [ Endpoint#adlib_endpoint.name, Priref, Uri, Type, Err, Stack ]),
+                    ?LOG_ERROR("Adlib import error from endpoint '~s' priref '~p' (uri ~s). Error: ~p:~p",
+                              [ Endpoint#adlib_endpoint.name, Priref, Uri, Type, Err ],
+                              #{ stack => Stack }),
                     {error, Err}
             end;
         {error, _} ->
@@ -287,8 +289,9 @@ import_record(#adlib_endpoint{} = Endpoint, Priref, Context) ->
             ?zError("Adlib import error from endpoint '~s' priref '~p' Error: ~p:~p",
                     [ Endpoint#adlib_endpoint.name, Priref, Type, Err ],
                     Context),
-            lager:error("Adlib import error from endpoint '~s' priref '~p' (uri ~s). Error: ~p:~p (stack ~p)",
-                        [ Endpoint#adlib_endpoint.name, Priref, Uri, Type, Err, Stack ]),
+            ?LOG_ERROR("Adlib import error from endpoint '~s' priref '~p' (uri ~s). Error: ~p:~p",
+                       [ Endpoint#adlib_endpoint.name, Priref, Uri, Type, Err ],
+                       #{ stack => Stack }),
             {error, Err}
     end.
 
