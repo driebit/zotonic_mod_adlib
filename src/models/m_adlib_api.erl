@@ -359,8 +359,8 @@ image_url_scaled(#adlib_endpoint{ api_url = Url }, Filename, MaxSize, Context) -
                     {ok, #{
                         <<"url">> => ImageUrl,
                         <<"mime">> => Mime,
-                        <<"width">> => W,
-                        <<"height">> => H
+                        <<"width">> => Width,
+                        <<"height">> => Height
                     }};
                 {ok, #{
                     <<"mime">> := Mime
