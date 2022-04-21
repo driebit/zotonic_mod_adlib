@@ -159,7 +159,7 @@ fetch_record(Endpoint, Priref, Context) ->
 -spec fetch_since(Endpoint, Since, z:context()) -> {ok, RecsCont} | {error, api_error()}
     when Endpoint :: mod_adlib:adlib_endpoint(),
          Since :: date(),
-         RecsCont :: { list(map()), fun(() -> {ok, RecsCont} | {error, api_error()}) }.
+         RecsCont :: { list(map()), fun(() -> {ok, RecsCont} | {error, api_error()}) | done }.
 fetch_since(Endpoint, Since, Context) ->
     DT = case Since of
         None when None =:= undefined;
@@ -249,9 +249,9 @@ fetch_since_pager(Endpoint, Since, Offset, Context) ->
                 #{ <<"diagnostic">> := [ #{ <<"hits">> := [ <<"0">> ] } ] }
             ]
         }} ->
-            ?LOG_ERROR("Adlib: fetch records since ~p: ~p found, offset ~p (~s ~s)",
+            ?LOG_NOTICE("Adlib: fetch records since ~p: ~p found, offset ~p (~s ~s)",
                        [ Since, 0, Offset, URL, Database ]),
-            {ok, {[], ok}};
+            {ok, {[], done}};
         {error, Reason} = Error ->
             ?LOG_ERROR("Adlib: Error fetch records since ~p, offset ~p (~s ~s): ~p",
                        [ Since, Offset, URL, Database, Reason ]),
