@@ -132,11 +132,7 @@ import_all_async(Endpoint, Context) ->
         "Adlib: queue async import from endpoint '~s'",
         [ Endpoint#adlib_endpoint.name ],
         Context),
-    ContextAsync = z_context:prune_for_async(Context),
-    sidejob_supervisor:spawn(
-            zotonic_sidejobs,
-            {?MODULE, import_all_async_task, [ Endpoint, ContextAsync ]}),
-    ok.
+    z_sidejob:start(?MODULE, import_all_async_task, [ Endpoint ], Context).
 
 %% @doc Async task for importing all Adlib docs, running as a zotonic_singular_job
 %% to prevent multiple imports running at the same time.
